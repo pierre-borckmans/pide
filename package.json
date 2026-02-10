@@ -1,6 +1,6 @@
 {
   "name": "@pborck/pi-de",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "IDE integration for pi coding agent - shows current file/selection from VS Code, JetBrains, etc.",
   "keywords": ["pi-package", "ide", "vscode", "jetbrains", "goland", "intellij"],
   "repository": {
