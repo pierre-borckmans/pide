@@ -11,7 +11,7 @@
   "license": "MIT",
   "pi": {
     "extensions": ["./index.ts"],
-    "image": "https://raw.githubusercontent.com/pierre-borckmans/pide/main/screenshot.png"
+    "image": "https://raw.githubusercontent.com/pierre-borckmans/pide/main/screenshot-v2.png"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
