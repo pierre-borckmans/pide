@@ -26,10 +26,10 @@ Select code in your IDE, then press `Ctrl+I` in pi to reference it:
 
 ```bash
 # Install from git
-pi install github.com/penberg/pide
+pi install github.com/pierre-borckmans/pide
 
 # Or try without installing
-pi -e git:github.com/penberg/pide
+pi -e git:github.com/pierre-borckmans/pide
 ```
 
 ### IDE Plugins
