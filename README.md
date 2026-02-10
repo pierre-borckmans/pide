@@ -18,7 +18,7 @@ Then run `/ide-setup` in pi to install your IDE plugin:
 
 Select code in your IDE, then press `Ctrl+I` in pi to reference it:
 
-![usage](screenshot-jetbrains.png)
+![usage](screenshot-usage.png)
 
 ## Installation
 
