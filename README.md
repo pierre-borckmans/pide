@@ -56,10 +56,10 @@ code --install-extension ./vscode-plugin/pide-vscode-0.1.0.vsix
 ## How It Works
 
 ```
-┌─────────────┐                           ┌─────────────┐
-│    IDE      │ ───── writes to ─────────▶│ ~/.pi/      │
-│             │                           │ ide-selection.json
-└─────────────┘                           └──────┬──────┘
+┌─────────────┐                      ┌──────────────────────────┐
+│    IDE      │ ───── writes to ────▶│ ~/.pi/ide-selection.json │
+│             │                      │                          │
+└─────────────┘                      └───────────┬──────────────┘
                                                  │
                            ┌─────────────────────┼─────────────────────┐
                            │ file watch          │ file watch          │
