@@ -1,43 +1,29 @@
 /**
- * IDE Integration Extension for pi
+ * pide - IDE Integration Extension for pi
  *
  * Integrates pi with external IDEs (VS Code, JetBrains, etc.) to show
- * currently selected file/code in the bottom right corner.
+ * currently selected file/code in the footer.
  *
  * Features:
  * - File-based communication (all pi instances see the selection)
- * - Shows selection status in bottom-right widget
- * - Commands to insert selection into conversation
- * - Keyboard shortcut to insert selection
+ * - Shows selection status in footer
+ * - Ctrl+I to insert file reference into conversation
+ * - /ide-setup to install IDE plugins
  *
  * How it works:
- * 1. IDE writes selection to ~/.pi/ide-selection.json
- * 2. ALL running pi instances watch this file
- * 3. Each pi shows the widget - user interacts with whichever terminal they're in
- *
- * File format (~/.pi/ide-selection.json):
- * {
- *   "file": "/path/to/file.ts",
- *   "selection": "selected code text",
- *   "startLine": 10,
- *   "endLine": 15,
- *   "ide": "vscode",
- *   "timestamp": 1707570000000
- * }
+ * 1. IDE plugin writes selection to ~/.pi/ide-selection.json
+ * 2. All running pi instances watch this file
+ * 3. Press Ctrl+I to reference the selection in your prompt
  */
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import * as http from "node:http";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 
-// File-based communication (primary)
+// File-based communication
 const PI_DIR = path.join(os.homedir(), ".pi");
 const SELECTION_FILE = path.join(PI_DIR, "ide-selection.json");
-
-// Optional HTTP server (secondary, for direct IDE communication)
-const DEFAULT_PORT = 9876;
 
 interface IDESelection {
   file: string;
@@ -52,7 +38,6 @@ let currentSelection: IDESelection | null = null;
 let lastCtx: ExtensionContext | null = null;
 let fileWatcher: fs.FSWatcher | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
-let httpServer: http.Server | null = null;
 let lastFileContent: string | null = null;
 
 function getLineCount(selection: IDESelection): number {
@@ -201,66 +186,6 @@ function startFileWatcher() {
   pollInterval = setInterval(checkForFileChanges, 500);
 }
 
-function createHttpServer(port: number): http.Server {
-  return http.createServer((req, res) => {
-    // CORS headers
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-    if (req.method === "OPTIONS") {
-      res.writeHead(200);
-      res.end();
-      return;
-    }
-
-    if (req.url === "/selection") {
-      if (req.method === "POST") {
-        let body = "";
-        req.on("data", (chunk) => (body += chunk));
-        req.on("end", () => {
-          try {
-            const data = JSON.parse(body);
-            const selection: IDESelection = {
-              file: data.file || "",
-              selection: data.selection,
-              startLine: data.startLine,
-              endLine: data.endLine,
-              ide: data.ide,
-              timestamp: Date.now(),
-            };
-
-            // Write to file (all pi instances will see it)
-            writeSelectionFile(selection);
-
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true }));
-          } catch {
-            res.writeHead(400, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "Invalid JSON" }));
-          }
-        });
-      } else if (req.method === "DELETE") {
-        writeSelectionFile(null);
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true }));
-      } else if (req.method === "GET") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(currentSelection || { selection: null }));
-      } else {
-        res.writeHead(405);
-        res.end();
-      }
-    } else if (req.url === "/health") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", port }));
-    } else {
-      res.writeHead(404);
-      res.end();
-    }
-  });
-}
-
 function formatSelectionForContext(selection: IDESelection): string {
   // URL-style format: /path/to/file.ts:10-15
   let fileRef = selection.file;
@@ -275,50 +200,16 @@ function formatSelectionForContext(selection: IDESelection): string {
 }
 
 export default function ideIntegration(pi: ExtensionAPI) {
-  // Register flag for HTTP server (optional, disabled by default)
-  pi.registerFlag("ide-server", {
-    description: "Enable HTTP server for IDE integration (optional)",
-    type: "boolean",
-    default: false,
-  });
-
-  pi.registerFlag("ide-port", {
-    description: "Port for IDE HTTP server (requires --ide-server)",
-    type: "number",
-    default: DEFAULT_PORT,
-  });
-
   pi.on("session_start", async (_event, ctx) => {
     lastCtx = ctx;
 
-    // Start file watcher (primary method - works for all instances)
+    // Start file watcher
     startFileWatcher();
 
     // Read initial selection (after watcher is set up)
     checkForFileChanges();
 
-    // Optionally start HTTP server (secondary method)
-    const enableServer = pi.getFlag("--ide-server") as boolean;
-    if (enableServer && !httpServer) {
-      const port = (pi.getFlag("--ide-port") as number) || DEFAULT_PORT;
-      httpServer = createHttpServer(port);
-
-      httpServer.on("error", (err: NodeJS.ErrnoException) => {
-        if (err.code === "EADDRINUSE") {
-          if (ctx.hasUI) {
-            ctx.ui.notify(`IDE HTTP server port ${port} in use (file-based still works)`, "warning");
-          }
-        }
-      });
-
-      httpServer.listen(port, "127.0.0.1", () => {
-        if (ctx.hasUI) {
-          ctx.ui.notify(`IDE HTTP server on port ${port}`, "info");
-        }
-      });
-    }
-
-    // Show widget if we have a selection
+    // Show status if we have a selection
     updateStatus(ctx);
   });
 
@@ -335,10 +226,6 @@ export default function ideIntegration(pi: ExtensionAPI) {
     if (pollInterval) {
       clearInterval(pollInterval);
       pollInterval = null;
-    }
-    if (httpServer) {
-      httpServer.close();
-      httpServer = null;
     }
   });
 
@@ -384,5 +271,137 @@ export default function ideIntegration(pi: ExtensionAPI) {
     },
   });
 
+  // Setup command to install IDE plugins
+  pi.registerCommand("ide-setup", {
+    description: "Install IDE plugin for pide",
+    handler: async (_args, ctx) => {
+      const choice = await ctx.ui.select("Select your IDE:", [
+        "VS Code / Cursor / VSCodium",
+        "JetBrains (IntelliJ, GoLand, WebStorm, PyCharm, etc.)",
+        "Cancel",
+      ]);
 
+      if (!choice || choice === "Cancel") return;
+
+      const GITHUB_REPO = "pierre-borckmans/pide";
+      const RELEASE_TAG = "v0.1.0";
+
+      if (choice.startsWith("VS Code")) {
+        await installVSCodePlugin(ctx, pi, GITHUB_REPO, RELEASE_TAG);
+      } else if (choice.startsWith("JetBrains")) {
+        await installJetBrainsPlugin(ctx, pi, GITHUB_REPO, RELEASE_TAG);
+      }
+    },
+  });
+}
+
+async function downloadFile(url: string, destPath: string): Promise<void> {
+  const https = await import("node:https");
+  
+  return new Promise((resolve, reject) => {
+    const followRedirect = (url: string) => {
+      https.get(url, (res) => {
+        if (res.statusCode === 302 || res.statusCode === 301) {
+          followRedirect(res.headers.location!);
+          return;
+        }
+        if (res.statusCode !== 200) {
+          reject(new Error(`Failed to download: ${res.statusCode}`));
+          return;
+        }
+        const file = fs.createWriteStream(destPath);
+        res.pipe(file);
+        file.on("finish", () => {
+          file.close();
+          resolve();
+        });
+      }).on("error", reject);
+    };
+    followRedirect(url);
+  });
+}
+
+async function installVSCodePlugin(
+  ctx: ExtensionContext,
+  pi: ExtensionAPI,
+  repo: string,
+  tag: string
+) {
+  const vsixUrl = `https://github.com/${repo}/releases/download/${tag}/pide-vscode.vsix`;
+  const tmpDir = path.join(os.tmpdir(), "pide-install");
+  const vsixPath = path.join(tmpDir, "pide-vscode.vsix");
+
+  ctx.ui.notify("Downloading VS Code extension...", "info");
+
+  try {
+    // Create temp directory
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+
+    // Download the vsix
+    await downloadFile(vsixUrl, vsixPath);
+
+    // Detect which VS Code variant to use
+    const codeCommands = ["code", "cursor", "codium"];
+    let installedWith: string | null = null;
+
+    for (const cmd of codeCommands) {
+      try {
+        const result = await pi.exec("which", [cmd], { timeout: 5000 });
+        if (result.code === 0) {
+          ctx.ui.notify(`Installing with ${cmd}...`, "info");
+          const installResult = await pi.exec(cmd, ["--install-extension", vsixPath], { timeout: 30000 });
+          if (installResult.code === 0) {
+            installedWith = cmd;
+            break;
+          }
+        }
+      } catch {
+        // Command not found, try next
+      }
+    }
+
+    // Cleanup
+    fs.unlinkSync(vsixPath);
+
+    if (installedWith) {
+      ctx.ui.notify(`✓ VS Code extension installed with ${installedWith}! Restart your editor.`, "info");
+    } else {
+      ctx.ui.notify("Could not find VS Code, Cursor, or VSCodium. Install manually from GitHub releases.", "warning");
+    }
+  } catch (e) {
+    ctx.ui.notify(`Failed to install: ${e}`, "error");
+  }
+}
+
+async function installJetBrainsPlugin(
+  ctx: ExtensionContext,
+  pi: ExtensionAPI,
+  repo: string,
+  tag: string
+) {
+  const zipUrl = `https://github.com/${repo}/releases/download/${tag}/pide-jetbrains.zip`;
+  const tmpDir = path.join(os.tmpdir(), "pide-install");
+  const zipPath = path.join(tmpDir, "pide-jetbrains.zip");
+
+  ctx.ui.notify("Downloading JetBrains plugin...", "info");
+
+  try {
+    // Create temp directory
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+
+    // Download the zip
+    await downloadFile(zipUrl, zipPath);
+
+    ctx.ui.notify(`✓ Downloaded to ${zipPath}`, "info");
+    ctx.ui.notify("To install: Settings → Plugins → ⚙️ → Install from Disk → select the zip file", "info");
+    
+    // Try to open the folder
+    await pi.exec("open", [tmpDir], { timeout: 5000 });
+  } catch (e) {
+    ctx.ui.notify(`Failed to download: ${e}. Visit https://github.com/${repo}/releases`, "error");
+  }
 }

@@ -1,15 +1,17 @@
 # Node
 node_modules/
+package-lock.json
+
+# Build artifacts (attached to releases, not committed)
 *.vsix
+*.zip
+vscode-plugin/out/
+vscode-plugin/node_modules/
 
 # JetBrains
 jetbrains-plugin/build/
 jetbrains-plugin/.gradle/
 jetbrains-plugin/.idea/
-
-# VS Code
-vscode-plugin/out/
-vscode-plugin/node_modules/
 
 # OS
 .DS_Store
