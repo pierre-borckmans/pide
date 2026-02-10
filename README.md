@@ -43,17 +43,15 @@ code --install-extension ./vscode-plugin/pide-vscode-0.1.0.vsix
 1. Build: `cd jetbrains-plugin && ./gradlew buildPlugin`
 2. Install: Settings → Plugins → ⚙️ → Install from Disk → select `build/distributions/pide-jetbrains-0.1.0.zip`
 
-## Usage
+## Commands
 
-1. Open pi in a terminal
-2. Select code in your IDE → status appears in pi's footer
-3. Press `Ctrl+I` to insert file reference into your prompt
+![commands](screenshot-commands.png)
 
-**Commands:**
 | Command | Description |
 |---------|-------------|
 | `/ide` | Insert file reference into editor |
 | `/ide-clear` | Clear the current selection |
+| `/ide-setup` | Install IDE plugin |
 
 ## How It Works
 
