@@ -1,0 +1,20 @@
+{
+  "name": "pide",
+  "version": "0.1.0",
+  "description": "IDE integration for pi coding agent - shows current file/selection from VS Code, JetBrains, etc.",
+  "keywords": ["pi-package", "ide", "vscode", "jetbrains", "goland", "intellij"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pierre-borckmans/pide"
+  },
+  "author": "Pierre Borckmans",
+  "license": "MIT",
+  "pi": {
+    "extensions": ["./index.ts"],
+    "image": "https://raw.githubusercontent.com/pierre-borckmans/pide/main/screenshot.png"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*"
+  }
+}

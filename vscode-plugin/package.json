@@ -1,0 +1,55 @@
+{
+  "name": "pide-vscode",
+  "displayName": "Pi IDE Integration",
+  "description": "Send current file/selection to pi coding agent",
+  "version": "0.1.0",
+  "publisher": "your-name",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pide.sendSelection",
+        "title": "Pi: Send Selection to Pi"
+      },
+      {
+        "command": "pide.clearSelection",
+        "title": "Pi: Clear Pi Selection"
+      }
+    ],
+    "configuration": {
+      "title": "Pi IDE Integration",
+      "properties": {
+        "pide.autoSend": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically send selection changes to pi"
+        },
+        "pide.debounceMs": {
+          "type": "number",
+          "default": 100,
+          "description": "Debounce delay in milliseconds for auto-send"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.7.1",
+    "typescript": "^5.3.0"
+  }
+}

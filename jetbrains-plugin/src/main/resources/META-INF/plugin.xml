@@ -1,0 +1,19 @@
+<idea-plugin>
+    <id>com.pide.jetbrains</id>
+    <name>Pi IDE Integration</name>
+    <version>0.1.0</version>
+    <vendor>pide</vendor>
+
+    <description><![CDATA[
+    Sends current file and selection to pi coding agent.
+    <br><br>
+    When you select code or open a file, the selection is sent to pi where you can
+    reference it with Ctrl+I.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <postStartupActivity implementation="com.pide.PiStartupActivity"/>
+    </extensions>
+</idea-plugin>

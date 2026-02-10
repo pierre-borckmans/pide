@@ -1,0 +1,18 @@
+# Node
+node_modules/
+*.vsix
+
+# JetBrains
+jetbrains-plugin/build/
+jetbrains-plugin/.gradle/
+jetbrains-plugin/.idea/
+
+# VS Code
+vscode-plugin/out/
+vscode-plugin/node_modules/
+
+# OS
+.DS_Store
+
+# Pi
+.pi/
