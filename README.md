@@ -7,7 +7,7 @@ Shows your current IDE file/selection in [pi](https://github.com/badlogic/pi-mon
 ## Setup
 
 ```bash
-pi install github.com/pierre-borckmans/pide
+pi install npm:@pborck/pi-de
 ```
 
 Then run `/ide-setup` in pi to install your IDE plugin:
@@ -25,11 +25,11 @@ Select code in your IDE, then press `Ctrl+I` in pi to reference it:
 ### Pi Extension
 
 ```bash
-# Install from git
-pi install github.com/pierre-borckmans/pide
+# Install from npm
+pi install npm:@pborck/pi-de
 
-# Or try without installing
-pi -e git:github.com/pierre-borckmans/pide
+# Or from git
+pi install github.com/pierre-borckmans/pide
 ```
 
 ### IDE Plugins
