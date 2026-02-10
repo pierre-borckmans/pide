@@ -6,7 +6,11 @@ Shows your current IDE file/selection in [pi](https://github.com/badlogic/pi-mon
 
 ## Setup
 
-Run `/ide-setup` in pi to install your IDE plugin:
+```bash
+pi install github.com/pierre-borckmans/pide
+```
+
+Then run `/ide-setup` in pi to install your IDE plugin:
 
 ![setup](screenshot-setup.png)
 
