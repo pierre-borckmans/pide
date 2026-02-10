@@ -284,7 +284,7 @@ export default function ideIntegration(pi: ExtensionAPI) {
       if (!choice || choice === "Cancel") return;
 
       const GITHUB_REPO = "pierre-borckmans/pide";
-      const RELEASE_TAG = "v0.1.1";
+      const RELEASE_TAG = "v0.1.2";
 
       if (choice.startsWith("VS Code")) {
         await installVSCodePlugin(ctx, pi, GITHUB_REPO, RELEASE_TAG);
@@ -375,6 +375,48 @@ async function installVSCodePlugin(
   }
 }
 
+function getJetBrainsBasePaths(): string[] {
+  const home = os.homedir();
+  const platform = os.platform();
+  
+  if (platform === "darwin") {
+    return [path.join(home, "Library", "Application Support", "JetBrains")];
+  } else if (platform === "linux") {
+    return [
+      path.join(home, ".local", "share", "JetBrains"),
+      path.join(home, ".config", "JetBrains"),
+    ];
+  } else if (platform === "win32") {
+    const appData = process.env.APPDATA || path.join(home, "AppData", "Roaming");
+    return [path.join(appData, "JetBrains")];
+  }
+  return [];
+}
+
+function getIdeName(dirName: string): string {
+  // Map directory names to friendly IDE names
+  const match = dirName.match(/^([A-Za-z]+)/);
+  if (!match) return dirName;
+  
+  const base = match[1];
+  const mappings: Record<string, string> = {
+    "GoLand": "GoLand",
+    "IntelliJIdea": "IntelliJ IDEA",
+    "WebStorm": "WebStorm",
+    "PyCharm": "PyCharm",
+    "CLion": "CLion",
+    "Rider": "Rider",
+    "RubyMine": "RubyMine",
+    "PhpStorm": "PhpStorm",
+    "DataGrip": "DataGrip",
+    "AndroidStudio": "Android Studio",
+    "AppCode": "AppCode",
+    "RustRover": "RustRover",
+  };
+  
+  return mappings[base] || dirName;
+}
+
 async function installJetBrainsPlugin(
   ctx: ExtensionContext,
   pi: ExtensionAPI,
@@ -396,12 +438,77 @@ async function installJetBrainsPlugin(
     // Download the zip
     await downloadFile(zipUrl, zipPath);
 
-    ctx.ui.notify(`✓ Downloaded to ${zipPath}`, "info");
-    ctx.ui.notify("To install: Settings → Plugins → ⚙️ → Install from Disk → select the zip file", "info");
-    
-    // Try to open the folder
-    await pi.exec("open", [tmpDir], { timeout: 5000 });
+    // Find JetBrains plugins directories (cross-platform)
+    const basePaths = getJetBrainsBasePaths();
+    const ideOptions: { dir: string; name: string; pluginsPath: string }[] = [];
+
+    for (const basePath of basePaths) {
+      if (!fs.existsSync(basePath)) continue;
+      
+      const dirs = fs.readdirSync(basePath).filter(d => {
+        const pluginsPath = path.join(basePath, d, "plugins");
+        return fs.existsSync(pluginsPath);
+      });
+
+      for (const dir of dirs) {
+        ideOptions.push({
+          dir,
+          name: getIdeName(dir),
+          pluginsPath: path.join(basePath, dir, "plugins"),
+        });
+      }
+    }
+
+    if (ideOptions.length === 0) {
+      ctx.ui.notify(`✓ Downloaded to ${zipPath}`, "info");
+      ctx.ui.notify("No JetBrains IDEs found. Install manually: Settings → Plugins → ⚙️ → Install from Disk", "info");
+      const openCmd = os.platform() === "darwin" ? "open" : os.platform() === "win32" ? "explorer" : "xdg-open";
+      await pi.exec(openCmd, [tmpDir], { timeout: 5000 });
+      return;
+    }
+
+    // Let user choose which IDE(s) to install to
+    const choices = [
+      ...ideOptions.map(o => o.name),
+      "All IDEs",
+      "Cancel",
+    ];
+    const choice = await ctx.ui.select("Install to which IDE?", choices);
+
+    if (!choice || choice === "Cancel") {
+      fs.unlinkSync(zipPath);
+      return;
+    }
+
+    const targets = choice === "All IDEs"
+      ? ideOptions
+      : ideOptions.filter(o => o.name === choice);
+
+    // Extract to each selected IDE's plugins folder
+    for (const target of targets) {
+      // Remove old version if exists
+      const oldPlugin = path.join(target.pluginsPath, "pide-jetbrains");
+      if (fs.existsSync(oldPlugin)) {
+        if (os.platform() === "win32") {
+          await pi.exec("rmdir", ["/s", "/q", oldPlugin], { timeout: 5000 });
+        } else {
+          await pi.exec("rm", ["-rf", oldPlugin], { timeout: 5000 });
+        }
+      }
+
+      // Extract zip
+      if (os.platform() === "win32") {
+        await pi.exec("powershell", ["-Command", `Expand-Archive -Force '${zipPath}' '${target.pluginsPath}'`], { timeout: 30000 });
+      } else {
+        await pi.exec("unzip", ["-o", zipPath, "-d", target.pluginsPath], { timeout: 30000 });
+      }
+      ctx.ui.notify(`✓ Installed to ${target.name}`, "info");
+    }
+
+    // Cleanup
+    fs.unlinkSync(zipPath);
+    ctx.ui.notify("Restart your IDE to activate the plugin!", "info");
   } catch (e) {
-    ctx.ui.notify(`Failed to download: ${e}. Visit https://github.com/${repo}/releases`, "error");
+    ctx.ui.notify(`Failed to install: ${e}. Visit https://github.com/${repo}/releases`, "error");
   }
 }
