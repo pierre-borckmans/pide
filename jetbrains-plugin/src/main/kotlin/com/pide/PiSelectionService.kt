@@ -86,9 +86,15 @@ class PiSelectionService : Disposable {
         }
     }
 
+    fun clear() {
+        selectionFile.delete()
+    }
+
     override fun dispose() {
         debounceTimer?.cancel()
         timer.cancel()
+        // Clear selection when IDE closes
+        clear()
     }
 
     companion object {

@@ -135,6 +135,6 @@ export function deactivate() {
   if (debounceTimer) {
     clearTimeout(debounceTimer);
   }
-  // Optionally clear selection on deactivate
-  // clearSelection();
+  // Clear selection when VS Code closes
+  clearSelection();
 }
