@@ -4,6 +4,18 @@ Shows your current IDE file/selection in [pi](https://github.com/badlogic/pi-mon
 
 ![screenshot](screenshot.png)
 
+## Setup
+
+Run `/ide-setup` in pi to install your IDE plugin:
+
+![setup](screenshot-setup.png)
+
+## Usage
+
+Select code in your IDE, then press `Ctrl+I` in pi to reference it:
+
+![usage](screenshot-jetbrains.png)
+
 ## Installation
 
 ### Pi Extension
