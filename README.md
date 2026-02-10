@@ -34,6 +34,22 @@ pi -e git:github.com/pierre-borckmans/pide
 
 ### IDE Plugins
 
+> **Note:** `/ide-setup` handles plugin installation automatically. The instructions below are for manual installation only.
+
+**Currently supported IDEs:**
+- VS Code / Cursor / VSCodium
+- IntelliJ IDEA
+- GoLand
+- WebStorm
+- PyCharm
+- CLion
+- Rider
+- RubyMine
+- PhpStorm
+- DataGrip
+- Android Studio
+- RustRover
+
 **VS Code / Cursor / VSCodium:**
 ```bash
 code --install-extension ./vscode-plugin/pide-vscode-0.1.0.vsix
