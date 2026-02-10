@@ -284,7 +284,7 @@ export default function ideIntegration(pi: ExtensionAPI) {
       if (!choice || choice === "Cancel") return;
 
       const GITHUB_REPO = "pierre-borckmans/pide";
-      const RELEASE_TAG = "v0.1.0";
+      const RELEASE_TAG = "v0.1.1";
 
       if (choice.startsWith("VS Code")) {
         await installVSCodePlugin(ctx, pi, GITHUB_REPO, RELEASE_TAG);
