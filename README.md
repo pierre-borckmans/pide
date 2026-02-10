@@ -2,7 +2,7 @@
 
 Shows your current IDE file/selection in [pi](https://github.com/badlogic/pi-mono) and lets you quickly reference it with `Ctrl+I`.
 
-![screenshot](screenshot.png)
+![screenshot](screenshot-v2.png)
 
 ## Setup
 
