@@ -83,7 +83,7 @@ function updateStatus(ctx: ExtensionContext) {
   const shortPath = getShortPath(currentSelection.file, 30);
   const fileName = path.basename(currentSelection.file);
   const ide = currentSelection.ide || "IDE";
-  const hint = theme.fg("dim", " (ctrl+i to insert) │");
+  const hint = theme.fg("dim", " (ctrl+; to insert) │");
 
   let statusText = "";
 
@@ -256,7 +256,7 @@ export default function ideIntegration(pi: ExtensionAPI) {
   });
 
   // Shortcut to quickly insert selection
-  pi.registerShortcut("ctrl+i", {
+  pi.registerShortcut("ctrl+;", {
     description: "Insert IDE selection into editor",
     handler: async (ctx) => {
       currentSelection = readSelectionFile();
@@ -284,7 +284,7 @@ export default function ideIntegration(pi: ExtensionAPI) {
       if (!choice || choice === "Cancel") return;
 
       const GITHUB_REPO = "pierre-borckmans/pide";
-      const RELEASE_TAG = "v0.1.3";
+      const RELEASE_TAG = "v0.1.4";
 
       if (choice.startsWith("VS Code")) {
         await installVSCodePlugin(ctx, pi, GITHUB_REPO, RELEASE_TAG);

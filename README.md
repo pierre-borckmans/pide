@@ -1,6 +1,6 @@
 # pide - IDE Integration for Pi
 
-Shows your current IDE file/selection in [pi](https://github.com/badlogic/pi-mono) and lets you quickly reference it with `Ctrl+I`.
+Shows your current IDE file/selection in [pi](https://github.com/badlogic/pi-mono) and lets you quickly reference it with `Ctrl+;`.
 
 ![screenshot](screenshot-v2.png)
 
@@ -16,7 +16,7 @@ Then run `/ide-setup` in pi to install your IDE plugin:
 
 ## Usage
 
-Select code in your IDE, then press `Ctrl+I` in pi to reference it:
+Select code in your IDE, then press `Ctrl+;` in pi to reference it:
 
 ![usage](screenshot-usage.png)
 
