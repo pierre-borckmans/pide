@@ -38,6 +38,7 @@ pi install github.com/pierre-borckmans/pide
 
 **Currently supported IDEs:**
 - VS Code / Cursor / VSCodium
+- Neovim
 - IntelliJ IDEA
 - GoLand
 - WebStorm
@@ -53,6 +54,26 @@ pi install github.com/pierre-borckmans/pide
 **VS Code / Cursor / VSCodium:**
 ```bash
 code --install-extension ./vscode-plugin/pide-vscode-0.1.0.vsix
+```
+
+**Neovim (lazy.nvim):**
+```lua
+{
+  "pierre-borckmans/pide",
+  config = function()
+    require("pide").setup()
+  end,
+}
+```
+
+**Neovim (packer.nvim):**
+```lua
+use {
+  "pierre-borckmans/pide",
+  config = function()
+    require("pide").setup()
+  end,
+}
 ```
 
 **JetBrains (IntelliJ, GoLand, WebStorm, PyCharm, etc.):**
@@ -111,6 +132,15 @@ cd vscode-plugin
 npm install
 npm run compile
 npm run package
+```
+
+### Neovim
+
+No build step required! The plugin is pure Lua. For development:
+
+```bash
+# Symlink to your nvim config for testing
+ln -s $(pwd)/nvim-plugin ~/.local/share/nvim/site/pack/pide/start/pide
 ```
 
 ### JetBrains

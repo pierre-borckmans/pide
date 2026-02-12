@@ -278,18 +278,21 @@ export default function ideIntegration(pi: ExtensionAPI) {
       const choice = await ctx.ui.select("Select your IDE:", [
         "VS Code / Cursor / VSCodium",
         "JetBrains (IntelliJ, GoLand, WebStorm, PyCharm, etc.)",
+        "Neovim",
         "Cancel",
       ]);
 
       if (!choice || choice === "Cancel") return;
 
       const GITHUB_REPO = "pierre-borckmans/pide";
-      const RELEASE_TAG = "v0.1.4";
+      const RELEASE_TAG = "v0.1.5";
 
       if (choice.startsWith("VS Code")) {
         await installVSCodePlugin(ctx, pi, GITHUB_REPO, RELEASE_TAG);
       } else if (choice.startsWith("JetBrains")) {
         await installJetBrainsPlugin(ctx, pi, GITHUB_REPO, RELEASE_TAG);
+      } else if (choice === "Neovim") {
+        await installNeovimPlugin(ctx, pi, GITHUB_REPO);
       }
     },
   });
@@ -510,5 +513,241 @@ async function installJetBrainsPlugin(
     ctx.ui.notify("Restart your IDE to activate the plugin!", "info");
   } catch (e) {
     ctx.ui.notify(`Failed to install: ${e}. Visit https://github.com/${repo}/releases`, "error");
+  }
+}
+
+function getNeovimConfigPaths(): string[] {
+  const home = os.homedir();
+  const platform = os.platform();
+  
+  const paths: string[] = [];
+  
+  // Standard XDG config path
+  const xdgConfig = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
+  paths.push(path.join(xdgConfig, "nvim"));
+  
+  // Windows paths
+  if (platform === "win32") {
+    const localAppData = process.env.LOCALAPPDATA || path.join(home, "AppData", "Local");
+    paths.push(path.join(localAppData, "nvim"));
+  }
+  
+  return paths;
+}
+
+function getNeovimDataPaths(): string[] {
+  const home = os.homedir();
+  const platform = os.platform();
+  
+  const paths: string[] = [];
+  
+  // Standard XDG data path for site packages
+  const xdgData = process.env.XDG_DATA_HOME || path.join(home, ".local", "share");
+  paths.push(path.join(xdgData, "nvim", "site", "pack", "pide", "start", "pide"));
+  
+  // Windows paths
+  if (platform === "win32") {
+    const localAppData = process.env.LOCALAPPDATA || path.join(home, "AppData", "Local");
+    paths.push(path.join(localAppData, "nvim-data", "site", "pack", "pide", "start", "pide"));
+  }
+  
+  return paths;
+}
+
+async function installNeovimPlugin(
+  ctx: ExtensionContext,
+  pi: ExtensionAPI,
+  repo: string
+) {
+  // Check if Neovim is installed
+  try {
+    const result = await pi.exec("nvim", ["--version"], { timeout: 5000 });
+    if (result.code !== 0) {
+      ctx.ui.notify("Neovim not found. Please install Neovim first.", "error");
+      return;
+    }
+  } catch {
+    ctx.ui.notify("Neovim not found. Please install Neovim first.", "error");
+    return;
+  }
+
+  // Check for plugin managers
+  const configPaths = getNeovimConfigPaths();
+  let configPath: string | null = null;
+  
+  for (const p of configPaths) {
+    if (fs.existsSync(p)) {
+      configPath = p;
+      break;
+    }
+  }
+
+  // Detect plugin manager
+  let hasLazy = false;
+  let hasPacker = false;
+  let hasVimPlug = false;
+
+  if (configPath) {
+    const lazyPath = path.join(configPath, "lua", "plugins");
+    const lazyPath2 = path.join(configPath, "lua", "lazy");
+    hasLazy = fs.existsSync(lazyPath) || fs.existsSync(lazyPath2) || 
+              (fs.existsSync(path.join(configPath, "init.lua")) && 
+               fs.readFileSync(path.join(configPath, "init.lua"), "utf-8").includes("lazy"));
+    
+    const packerPath = path.join(configPath, "lua", "packer");
+    hasPacker = fs.existsSync(packerPath) ||
+                (fs.existsSync(path.join(configPath, "init.lua")) && 
+                 fs.readFileSync(path.join(configPath, "init.lua"), "utf-8").includes("packer"));
+    
+    hasVimPlug = fs.existsSync(path.join(configPath, "init.vim")) &&
+                 fs.readFileSync(path.join(configPath, "init.vim"), "utf-8").includes("plug#begin");
+  }
+
+  // Build choices - Quick install first, then plugin managers if detected
+  const choices: string[] = ["Quick install (recommended)"];
+  if (hasLazy) choices.push("Use lazy.nvim (detected)");
+  if (hasPacker) choices.push("Use packer.nvim (detected)");
+  if (hasVimPlug) choices.push("Use vim-plug (detected)");
+  choices.push("Cancel");
+
+  const choice = await ctx.ui.select("How would you like to install?", choices);
+  
+  if (!choice || choice === "Cancel") return;
+
+  if (choice.startsWith("Use lazy.nvim") || choice.startsWith("Use packer.nvim") || choice.startsWith("Use vim-plug")) {
+    // Show config snippet for plugin manager users
+    let snippet = "";
+    if (choice.includes("lazy")) {
+      snippet = `{
+  "${repo}",
+  config = function()
+    require("pide").setup()
+  end,
+}`;
+    } else if (choice.includes("packer")) {
+      snippet = `use {
+  "${repo}",
+  config = function()
+    require("pide").setup()
+  end,
+}`;
+    } else if (choice.includes("vim-plug")) {
+      snippet = `Plug '${repo}'`;
+    }
+    
+    // Copy to clipboard
+    try {
+      const clipCmd = os.platform() === "darwin" ? "pbcopy" : 
+                      os.platform() === "win32" ? "clip" : "xclip -selection clipboard";
+      await pi.exec("sh", ["-c", `echo '${snippet.replace(/'/g, "'\\''")}' | ${clipCmd}`], { timeout: 5000 });
+      ctx.ui.notify("✓ Config snippet copied to clipboard!", "info");
+    } catch {
+      ctx.ui.notify("Config snippet:", "info");
+      ctx.ui.notify(snippet, "info");
+    }
+    
+    if (choice.includes("lazy")) {
+      ctx.ui.notify("Paste into your lazy.nvim plugins, then run :Lazy sync", "info");
+    } else if (choice.includes("packer")) {
+      ctx.ui.notify("Paste into your packer config, then run :PackerSync", "info");
+    } else if (choice.includes("vim-plug")) {
+      ctx.ui.notify("Paste into your init.vim, then run :PlugInstall", "info");
+      ctx.ui.notify("Also add to init.lua: require('pide').setup()", "info");
+    }
+    
+  } else if (choice === "Quick install (recommended)") {
+    // Clone directly to nvim site directory
+    const dataPaths = getNeovimDataPaths();
+    const installPath = dataPaths[0]; // Use first (standard) path
+    
+    ctx.ui.notify("Installing to " + installPath + "...", "info");
+    
+    try {
+      // Create parent directories
+      const parentDir = path.dirname(installPath);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+      
+      // Remove old installation if exists
+      if (fs.existsSync(installPath)) {
+        if (os.platform() === "win32") {
+          await pi.exec("rmdir", ["/s", "/q", installPath], { timeout: 5000 });
+        } else {
+          await pi.exec("rm", ["-rf", installPath], { timeout: 5000 });
+        }
+      }
+      
+      // Clone the repo (only the nvim-plugin subdirectory would be ideal, but git clone doesn't support that easily)
+      // So we clone the whole repo and it works because lua/pide is in nvim-plugin/
+      const result = await pi.exec("git", ["clone", "--depth", "1", `https://github.com/${repo}.git`, installPath], { timeout: 60000 });
+      
+      if (result.code !== 0) {
+        throw new Error(result.stderr || "git clone failed");
+      }
+      
+      // Move nvim-plugin contents to root
+      const nvimPluginDir = path.join(installPath, "nvim-plugin");
+      if (fs.existsSync(nvimPluginDir)) {
+        // Copy lua directory
+        const luaSrc = path.join(nvimPluginDir, "lua");
+        const luaDest = path.join(installPath, "lua");
+        if (fs.existsSync(luaSrc)) {
+          if (os.platform() === "win32") {
+            await pi.exec("xcopy", ["/E", "/I", "/Y", luaSrc, luaDest], { timeout: 5000 });
+          } else {
+            await pi.exec("cp", ["-r", luaSrc, luaDest], { timeout: 5000 });
+          }
+        }
+        
+        // Copy plugin directory
+        const pluginSrc = path.join(nvimPluginDir, "plugin");
+        const pluginDest = path.join(installPath, "plugin");
+        if (fs.existsSync(pluginSrc)) {
+          if (os.platform() === "win32") {
+            await pi.exec("xcopy", ["/E", "/I", "/Y", pluginSrc, pluginDest], { timeout: 5000 });
+          } else {
+            await pi.exec("cp", ["-r", pluginSrc, pluginDest], { timeout: 5000 });
+          }
+        }
+      }
+      
+      // Auto-configure init.lua
+      const initLuaPath = configPath ? path.join(configPath, "init.lua") : null;
+      const setupLine = "require('pide').setup()";
+      let configuredInit = false;
+      
+      if (initLuaPath && fs.existsSync(initLuaPath)) {
+        const initContent = fs.readFileSync(initLuaPath, "utf-8");
+        if (!initContent.includes("pide")) {
+          // Add setup line at the end
+          const newContent = initContent.trimEnd() + "\n\n-- pide: IDE integration for pi\n" + setupLine + "\n";
+          fs.writeFileSync(initLuaPath, newContent);
+          configuredInit = true;
+          ctx.ui.notify("✓ Added pide setup to " + initLuaPath, "info");
+        } else {
+          ctx.ui.notify("✓ pide already configured in init.lua", "info");
+          configuredInit = true;
+        }
+      } else if (configPath) {
+        // Create init.lua if it doesn't exist
+        const newInitPath = path.join(configPath, "init.lua");
+        if (!fs.existsSync(configPath)) {
+          fs.mkdirSync(configPath, { recursive: true });
+        }
+        fs.writeFileSync(newInitPath, "-- pide: IDE integration for pi\n" + setupLine + "\n");
+        configuredInit = true;
+        ctx.ui.notify("✓ Created " + newInitPath, "info");
+      }
+      
+      ctx.ui.notify("✓ Plugin installed!", "info");
+      if (!configuredInit) {
+        ctx.ui.notify("Add this to your init.lua: " + setupLine, "info");
+      }
+      ctx.ui.notify("Restart Neovim to activate.", "info");
+      
+    } catch (e) {
+      ctx.ui.notify(`Failed to install: ${e}`, "error");
+    }
   }
 }
